@@ -1,8 +1,10 @@
 #ifndef EUCLIDIAN
 #define EUCLIDIAN
 
-#include<vector>
-#include<iostream>
+#include <vector>
+#include <math.h>
+
+#include <iostream>
 
 template <typename T>
 class Vector
@@ -22,12 +24,11 @@ class Vector
 			}
 		}
 		
-		int getDim() { return dim; }
+		int get_dim() { return dim; }
 		
-		template <typename U>
-		Vector<U> times( U c )
+		Vector<T> times( T c )
 		{
-			Vector<U> new_vector(v);
+			Vector<T> new_vector(v);
 			for( int i = 0; i < dim; ++i )
 			{
 				new_vector.at(i) = new_vector.at(i)*c;
@@ -36,28 +37,26 @@ class Vector
 			return new_vector;
 		}
 		
-		template <typename U>
-		Vector<U> div( U c )
+		Vector<T> div( T c )
 		{
-			Vector<U> new_vector(v);
+			Vector<T> new_vector(v);
 			for( int i = 0; i < dim; ++i )
 			{
 				new_vector.at(i) = new_vector.at(i)/c;
 			}
 			
-			return Vector<U>(new_vector);
+			return new_vector;
 		}
 		
-		template<typename U>
-		Vector<U> add( Vector<U> &u )
+		Vector<T> add( Vector<T> &u )
 		{
-			if( u.getDim() != dim )
+			if( u.get_dim() != dim )
 			{
 				throw("Two vectors are not of the same dimension!");
 			}
 			else
 			{
-				Vector<U> new_vector(u);
+				Vector<T> new_vector(u);
 				
 				for( int i = 0; i < dim; ++i )
 				{
@@ -68,16 +67,15 @@ class Vector
 			}
 		}
 		
-		template<typename U>
-		Vector<U> minus( Vector<U> &u )
+		Vector<T> minus( Vector<T> &u )
 		{
-			if( u.getDim() != dim )
+			if( u.get_dim() != dim )
 			{
 				throw("Two vectors are not of the same dimension!");
 			}
 			else
 			{
-				Vector<U> new_vector(u);
+				Vector<T> new_vector(u);
 				
 				for( int i = 0; i < dim; ++i )
 				{
@@ -88,29 +86,82 @@ class Vector
 			}
 		}
 		
-		template<typename U>
-		U product( Vector<U> &u )
+		T product( Vector<T> &u )
 		{
-			if( u.getDim() != dim )
+			if( u.get_dim() != dim )
 			{
 				throw("Two vectors are not of the same dimension!");
 			}
 			else
 			{
-				U prod;
-				
+				T prod(0);
+
 				for( int i = 0; i < dim; ++i )
 				{
-					prod = prod + u.at(i) * v[i];
-					std::cout << prod << '\n';
+					prod = prod + (u.at(i) * at(i));
 				}
 				
 				return prod;
 			}
 		}
+
+		T squared()
+		{
+			T prod(0);
+			
+			for( int i = 0; i < dim; ++i )
+			{
+				prod = prod + v[i] * v[i];
+			}
+			
+			return prod;
+		}
+
+		T get_squared_length()
+		{
+			if( squared_length == -1 )
+			{
+				squared_length = squared();
+			}
+
+			return squared_length;
+		}
+
+		std::vector<T> &get_vector() { return v; }
+
+
+		Vector<T> operator+( Vector<T>& u )
+		{
+			return add(u);
+		}
+
+		Vector<T> operator-( Vector<T>& u)
+		{ 
+			return minus(u);
+		}
+
+		T operator*( Vector<T>& u )
+		{ 
+			return product(u);
+		}
+
+		Vector<T> operator*( T c )
+		{ 
+			return times(c);
+		}
+
+		Vector<T> operator/( T c )
+		{ 
+			return div(c);
+		}
+
+		bool operator==( Vector<T>& u ){ return u.get_vector() == v; }
+
+		bool operator!=( Vector<T>& u ) { return !(u == v); }
 	
 	private:
 		std::vector<T> v;
+		T squared_length = -1;
 		int dim;
 };
 
@@ -119,71 +170,26 @@ std::ostream& operator<<( std::ostream& strm, Vector<T> v )
 {
 	strm << '[';
 	
-	for( int i = 0; i < v.getDim()-1; ++i )
+	for( int i = 0; i < v.get_dim()-1; ++i )
 	{
 		strm << v.at(i) << ", ";
 	}
 	
-	strm << v.at(v.getDim()-1) << ']';
+	strm << v.at(v.get_dim()-1) << ']';
 	
 	return strm;
 }
 
-template <typename T>
-Vector<T> operator+( Vector<T>& u, Vector<T>& v )
-{
-	return u.add(v);
-}
-
-template <typename T>
-Vector<T> operator-( Vector<T>& u, Vector<T>& v )
-{ 
-	return u.minus(v);
-}
-
-template <typename T>
-T operator*( Vector<T>& u, Vector<T>& v )
-{ 
-	return u.product(v);
-}
-
-template <typename T>
-Vector<T> operator*( T c, Vector<T>& v )
+template <typename U, typename T>
+Vector<T> operator*( U c, Vector<T>& v )
 { 
 	return v.times(c);
 }
 
-template <typename T>
-Vector<T> operator*( Vector<T>& v, T c )
+template <typename U, typename T>
+Vector<T> operator*( Vector<T>& v, U c )
 { 
 	return v.times(c);
 }
-
-template <typename T>
-Vector<T> operator*( int c, Vector<T>& v )
-{ 
-	T cc(c);
-	return v.times(cc);
-}
-
-template <typename T>
-Vector<T> operator*( Vector<T>& v, int c )
-{ 
-	T cc(c);
-	return v.times(cc);
-}
-
-template <typename T>
-Vector<T> operator/( Vector<T>& v, T c )
-{ 
-	return v.div(c);
-}
-
-template <typename T>
-bool operator==( Vector<T>& u, Vector<T>& v ){ return u == v; }
-
-template <typename T>
-bool operator!=( Vector<T> u, Vector<T> v ) { return u != v; }
-
 
 #endif
