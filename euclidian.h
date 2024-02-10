@@ -2,6 +2,7 @@
 #define EUCLIDIAN
 
 #include<vector>
+#include<iostream>
 
 template <typename T>
 class Vector
@@ -101,6 +102,7 @@ class Vector
 				for( int i = 0; i < dim; ++i )
 				{
 					prod = prod + u.at(i) * v[i];
+					std::cout << prod << '\n';
 				}
 				
 				return prod;
@@ -178,46 +180,10 @@ Vector<T> operator/( Vector<T>& v, T c )
 }
 
 template <typename T>
-bool operator==( Vector<T>& u, Vector<T>& v )
-{
-	if( u.getDim() != v.getDim() )
-	{
-		return false;
-	}
-	else
-	{
-		bool same = true;
-		
-		for( int i = 0; i < u.getDim(); ++i )
-		{
-			if( v.at(i) != u.at(i) )
-			{
-				same = false;
-				break;
-			}
-		}
-		
-		return same;
-	}
-}
+bool operator==( Vector<T>& u, Vector<T>& v ){ return u == v; }
 
 template <typename T>
-bool operator!=( Vector<T> u, Vector<T> v ) { return !(u == v); }
-
-class Lattice
-{
-
-};
-
-class Base_reduction
-{
-
-};
-
-class SVP_solver
-{
-
-};
+bool operator!=( Vector<T> u, Vector<T> v ) { return u != v; }
 
 
 #endif
