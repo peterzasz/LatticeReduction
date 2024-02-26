@@ -1,33 +1,256 @@
-using LinearAlgebra, StaticArrays
+using LinearAlgebra
 
-#core functions
-sq_norm(v) = v⋅v
+# basic functions
 
-#CVP
+sq_norm(v) = v⋅v # gives back square norm of vector
+ort_deft(B,R) = prod(norm(B[:,i])/abs(diag(R)[i]) for i in 1:size(B,2)) # gives back ortogonality defect of base (B: base vectors as columns of matrix, R: B = QR)
 
-function CVP_solver() end
 
-#SVP
+# CVP, SVP solvers
 
-function LagrangeGauss_2d!( u::MVector{2}, v::MVector{2} )
-	
+# returns base component of shortest vector
+function greedy_CVP( Q::Matrix, R::Matrix, v::Vector, v_comp::Vector )
+
+	r = norm( diag(R) ./ 2 ) # radius of ball to search trough
+
+	lower = v_comp .- r
+	upper = v_comp .+ r
+
+	position = zeros(size(lower))
+	base_comp = zeros(Int,size(lower))
+
+	# setting up start position
+
+	for i in size(lower,1):-1:1
+		dist = ceil(Int,(lower[i]-position[i])/diag(R)[i])
+		position = position + R[:,i].*dist
+		base_comp[i] += dist
+	end
+
+	# minsearch trough cube
+
+	min_len = Inf
+	min_base_comp = zeros(Int,size(lower))
+
+	at = 1
+	while at <= size(position,1)
+
+		back_len = sq_norm(position[2:end]-v_comp[2:end])
+
+		while position[1] < upper[1]
+
+			len = back_len + (position[1]-v_comp[1])^2
+
+			if len < min_len
+				min_len = len
+				min_base_comp = copy(base_comp)
+			end
+
+			if R[1,1] < 0
+				position += -R[:,1]
+				base_comp[1] -= 1
+			else
+				position += R[:,1]
+				base_comp[1] += 1
+			end
+		end
+
+		at = 2
+		if R[2,2] < 0
+			position += -R[:,2]
+			base_comp[2] -= 1
+		else
+			position += R[:,2]
+			base_comp[2] += 1
+		end
+
+		while position[at] > upper[at]
+
+			at += 1
+
+			if at > size(position,1)
+				break
+			else
+				if R[at,at] < 0
+					position += -R[:,at]
+					base_comp[at] -= 1
+				else
+					position += R[:,at]
+					base_comp[at] += 1
+				end
+			end
+		end
+
+		if at <= size(position,1)
+
+			for i in at-1:-1:1
+
+				dist = ceil(Int,(lower[i]-position[i])/diag(R)[i])
+				position = position + R[:,i].*dist
+				base_comp[i] += dist
+
+			end
+		end
+	end
+
+	return min_base_comp
+end
+
+function greedy_SVP(Q::Matrix,R::Matrix) # returns shortest vector
+	# todo
+end
+
+
+# Basis reduction
+
+function LagrangeGauss_2d!( u, v )
+
+	counter = 0
+
 	s(u,v) = Int(round( u⋅v / sq_norm(u) )) # v - su
 
-	v .-= s(u,v)*u
+	ss = s(u,v)
+
+	if ss != 0
+		counter += 1
+		v .-= s(u,v)*u
+	end
 	
 	while sq_norm(u) > sq_norm(v)
 
-		u .-= s(v,u)*v
+		ss = s(v,u)
+
+		if ss != 0
+			counter += 1
+			u .-= ss*v
+		end
 
 		if sq_norm(v) <= sq_norm(u)
 			break
 		end
 
-		v .-= s(u,v)*u
+		ss = s(u,v)
 
+		if ss != 0
+			counter += 1
+			v .-= ss*u
+		end
+	end
+
+	return counter
+end
+
+function LagrangeGauss_var1!(B::Matrix)
+
+	counter = 0
+
+	s(u,v) = Int(round( u⋅v / sq_norm(u) )) # as in 2dim
+
+	if size(B,2) == 2
+		@views u,v = B[:,1], B[:,2]
+		LagrangeGauss_2d!(u,v)
+	else
+	
+		smaller = true
+
+		while smaller
+
+			B .= sortslices(B, dims=2, by=norm)
+			Q,R = qr(B)
+			Q = Matrix(Q)
+
+			smaller = false
+			for i in size(B,2):-1:3
+
+				comp = greedy_CVP(Q[:,1:i-1],R[1:i-1,1:i-1],Q[:,1:i-1]*R[1:i-1,i],R[1:i-1,i])
+				new_vec = B[:,i] - B[:,1:i-1]*comp 
+
+				if norm(new_vec) < norm(B[:,i])
+					B[:,i] = new_vec
+					smaller = true
+					counter += 1
+				end
+			end
+
+			new_vec = B[:,2] - s(B[:,1],B[:,2])*B[:,1]
+
+			if norm(new_vec) < norm(B[:,2])
+				B[:,2] = new_vec
+				smaller = true
+				counter += 1
+			end
+
+		end
+
+		B .= sortslices(B, dims=2, by=norm)
+	end
+
+	return counter
+end
+
+
+function greedy_step!(B::Matrix,at::Int,Q::Matrix,R::Matrix) # returns -1 - length not decreased; 0 - length decrased, but vector positions not; 1 - length decrased, vector positions changed
+
+	comp = greedy_CVP(Q[:,1:at-1],R[1:at-1,1:at-1],Q[:,1:at-1]*R[1:at-1,at],R[1:at-1,at])
+	new_vec = B[:,at] - B[:,1:at-1]*comp
+
+	new_norm = norm(new_vec)
+	index = at
+
+	while index > 0 && new_norm < norm(B[:,index])
+		index -= 1
+	end
+
+	if index == at
+		return -1
+	elseif index == at-1
+		B[:,at] = new_vec
+		return 0
+	else
+		for i in at:-1:index+2
+			B[:,i] = B[:,i-1]
+		end
+
+		B[:,index+1] = new_vec
+
+		return 1
 	end
 end
 
-function SVP_Enum() end
+function LagrangeGauss_var2!(B::Matrix) # gives back number of times it decrased length of a vector
 
-function LagrangeGauss!() end
+	counter = 0
+
+	if size(B,2) == 2
+		@views u,v = B[:,1], B[:,2]
+		LagrangeGauss_2d!(u,v)
+	else
+
+		B .= sortslices(B, dims=2, by=norm)
+		at = size(B,2)
+
+		while at > 2
+
+			step = 1
+			while step == 1
+				Q,R = qr(B)
+				Q = Matrix(Q)
+				
+				step = greedy_step!(B,at,Q,R)
+				
+				if step == 1 || step == 0
+					counter += 1
+				end
+			end
+
+			at -= 1
+		end
+
+		@views u,v = B[:,1], B[:,2]
+		counter += LagrangeGauss_2d!(u,v)
+	end
+
+	return counter
+end
+
+
