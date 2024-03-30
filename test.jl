@@ -27,7 +27,7 @@ greedy_CVP(Matrix(F.Q),F.R,v,Matrix(F.Q)\v)
 
 @time A*greedy_CVP(Matrix(F.Q),F.R,v,Matrix(F.Q)\v) |> display
 =#
-
+#=
 n = 10
 
 for i in 1:10
@@ -40,24 +40,57 @@ for i in 1:10
 
 	M2 = copy(M)
 
-	#=println("var1:")
+	println("var1:")
 
 	@time counter = LagrangeGauss_var1!(M)
 
 	(counter, od/counter) |> display
 
-	println()=#
+	println()
 
 	counter = LagrangeGauss_var2!(M2)
 
 	(counter, od, ort_deft(M2,qr(M2).R)) |> display
 
+end =#
+#=
+function lalala()
+	d = 5
+	B = rand(d,d) .* 100
+	B |> display
+
+	while !is_invertible(B)
+		B = rand(-range:range,d,d)
+	end
+
+	LagrangeGauss_var1!(B)
+
+	ort_deft(B,qr(B).R) |> display
+
+	for i in 1:size(B,2)
+		nr = norm(B[:,i])
+
+		for j in 1:size(B,1)
+			B[j,i] = B[j,i] / nr
+		end
+	end
+
+	ort_deft(B,qr(B).R) |> display
+
+	LagrangeGauss_var1!(B)
+
+	ort_deft(B,qr(B).R) |> display
 end
 
+lalala()=#
+function bcal(n)
+	x = 1
 
-#=
-M = [1 2 3; 4 5 6; 7 8 9]
-M |> display
-switch_col(M,2,3)
-M[:,end-1] |> display =#
+	for i = 2:n
+		x = sqrt(1-((i-1)/i)^2*x^2)
+		println(x)
 
+	end
+end
+
+bcal(100000)
